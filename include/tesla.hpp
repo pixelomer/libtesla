@@ -63,7 +63,7 @@
 #include <list>
 #include <stack>
 #include <map>
-
+#include <filesystem>
 
 
 
@@ -2310,9 +2310,10 @@ namespace tsl {
 		Overlay::get()->goBack();
 	}
 
-	static void setNextOverlay(std::string ovlPath, std::string args) {
+	static void setNextOverlay(std::string ovlPath, std::string origArgs) {
 
-		args += " --skipCombo";
+		std::string args = std::filesystem::path(ovlPath).filename();
+		args += " " + origArgs + " --skipCombo";
 
 		envSetNextLoad(ovlPath.c_str(), args.c_str());
 	}
