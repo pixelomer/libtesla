@@ -1968,7 +1968,7 @@ namespace tsl {
 		 */
 		template<typename T, typename ... Args>
 		constexpr inline std::unique_ptr<T> initially(Args&&... args) {
-			return std::move(std::make_unique<T>(args...));
+			return std::make_unique<T>(args...);
 		}
 
 	private:
