@@ -19,6 +19,8 @@
 
 #pragma once
 
+
+
 #define KEY_A HidNpadButton_A
 #define KEY_B HidNpadButton_B
 #define KEY_X HidNpadButton_X
@@ -44,6 +46,7 @@
 #define touchPosition const HidTouchState
 #define touchInput &touchPos
 #define JoystickPosition HidAnalogStickState
+float M_PI = 3.14159265358979323846;
 
 #include <switch.h>
 
@@ -63,8 +66,25 @@
 #include <list>
 #include <stack>
 #include <map>
-#include <filesystem>
 
+
+#include "ini_funcs.hpp"
+
+
+bool isValidHexColor(const std::string& hexColor) {
+    // Check if the string is a valid hexadecimal color of the format "#RRGGBB"
+    if (hexColor.size() != 6) {
+        return false; // Must be exactly 6 characters long
+    }
+    
+    for (char c : hexColor) {
+        if (!isxdigit(c)) {
+            return false; // Must contain only hexadecimal digits (0-9, A-F, a-f)
+        }
+    }
+    
+    return true;
+}
 
 
 // Define this makro before including tesla.hpp in your main file. If you intend
@@ -256,8 +276,9 @@ namespace tsl {
 			 * 
 			 * @param str String to parse
 			 * @return Parsed data
+			 * // Modified to be "const std" instead of just "std"
 			 */
-			static IniData parseIni(std::string &str) {
+			static IniData parseIni(const std::string &str) {
 				IniData iniData;
 				
 				auto lines = split(str, '\n');
@@ -349,7 +370,73 @@ namespace tsl {
 			inline Color(u16 raw): rgba(raw) {}
 			inline Color(u8 r, u8 g, u8 b, u8 a): r(r), g(g), b(b), a(a) {}
 		};
+        Color GradientColor(float temperature) {
+            // Ensure temperature is within the range [0, 100]
+            temperature = std::max(0.0f, std::min(100.0f, temperature)); // Celsius
 
+            // this is where colors are at their full
+            float blueStart = 35.0f;
+            float greenStart = 45.0f;
+            float yellowStart = 55.0f;
+            float redStart = 65.0f;
+
+            // Initialize RGB values
+            uint8_t r, g, b, a = 0xFF;
+
+            if (temperature < blueStart) { // rgb 7, 7, 15 at blueStart
+                r = 7;
+                g = 7;
+                b = 15;
+            } else if (temperature >= blueStart && temperature < greenStart) {
+                // Smooth color blending from (7 7 15) to (0 15 0)
+                float t = (temperature - blueStart) / (greenStart - blueStart);
+                r = static_cast<uint8_t>(7 - 7 * t);
+                g = static_cast<uint8_t>(7 + 8 * t);
+                b = static_cast<uint8_t>(15 - 15 * t);
+            } else if (temperature >= greenStart && temperature < yellowStart) {
+                // Smooth color blending from (0 15 0) to (15 15 0)
+                float t = (temperature - greenStart) / (yellowStart - greenStart);
+                r = static_cast<uint8_t>(15 * t);
+                g = static_cast<uint8_t>(15);
+                b = static_cast<uint8_t>(0);
+            } else if (temperature >= yellowStart && temperature < redStart) {
+                // Smooth color blending from (15 15 0) to (15 0 0)
+                float t = (temperature - yellowStart) / (redStart - yellowStart);
+                r = static_cast<uint8_t>(15);
+                g = static_cast<uint8_t>(15 - 15 * t);
+                b = static_cast<uint8_t>(0);
+            } else {
+                // Full red
+                r = 15;
+                g = 0;
+                b = 0;
+            }
+
+            return Color(r, g, b, a);
+        }
+
+        Color RGB888(std::string hexColor, std::string defaultHexColor = "#FFFFFF") {
+            // Remove the '#' character if it's present
+            if (!hexColor.empty() && hexColor[0] == '#') {
+                hexColor = hexColor.substr(1);
+            }
+        
+            if (isValidHexColor(hexColor)) {
+                std::string r = hexColor.substr(0, 2); // Extract the first two characters (red component)
+                std::string g = hexColor.substr(2, 2); // Extract the next two characters (green component)
+                std::string b = hexColor.substr(4, 2); // Extract the last two characters (blue component)
+            
+                // Convert the RGBA8888 strings to RGBA4444
+                uint8_t redValue = std::stoi(r, nullptr, 16) >> 4;   // Right-shift by 4 bits
+                uint8_t greenValue = std::stoi(g, nullptr, 16) >> 4; // Right-shift by 4 bits
+                uint8_t blueValue = std::stoi(b, nullptr, 16) >> 4;  // Right-shift by 4 bits
+            
+                // Create a Color with the extracted RGB values
+            
+                return Color(redValue, greenValue, blueValue, 15);
+            }
+            return RGB888(defaultHexColor);
+        }
 		/**
 		 * @brief Manages the Tesla layer and draws raw data to the screen
 		 */
@@ -1003,6 +1090,12 @@ namespace tsl {
 			Element() {}
 			virtual ~Element() {}
 
+            std::string highlightColor1Str = parseValueFromIniSection("/config/ultrahand/theme.ini", "theme", "highlight_color_1");
+            std::string highlightColor2Str = parseValueFromIniSection("/config/ultrahand/theme.ini", "theme", "highlight_color_2");
+            
+            tsl::gfx::Color highlightColor1 = tsl::gfx::RGB888(highlightColor1Str, "#2288CC");
+            tsl::gfx::Color highlightColor2 = tsl::gfx::RGB888(highlightColor2Str, "#88FFFF");
+
 			/**
 			 * @brief Handles focus requesting
 			 * @note This function should return the element to focus. 
@@ -1105,45 +1198,51 @@ namespace tsl {
 			 * @param renderer Renderer
 			 */
 			virtual void drawHighlight(gfx::Renderer *renderer) {
-				static float counter = 0;
-				const float progress = (std::sin(counter) + 1) / 2;
-				gfx::Color highlightColor = {   static_cast<u8>((0x2 - 0x8) * progress + 0x8),
-												static_cast<u8>((0x8 - 0xF) * progress + 0xF), 
-												static_cast<u8>((0xC - 0xF) * progress + 0xF), 
-												0xF };
+                // Get the current time
+                auto currentTime = std::chrono::system_clock::now();
+                auto timeInSeconds = std::chrono::duration<double>(currentTime.time_since_epoch()).count();
 
-				counter += 0.1F;
+                // Calculate the progress for one full sine wave per second
+                const double cycleDuration = 1.0;  // 1 second for one full sine wave
+                double timeCounter = fmod(timeInSeconds, cycleDuration);
+                float progress = (std::sin(2 * M_PI * timeCounter / cycleDuration) + 1) / 2;
 
-				s32 x = 0, y = 0;
+                tsl::gfx::Color highlightColor = {
+                    static_cast<u8>((highlightColor1.r - highlightColor2.r) * progress + highlightColor2.r),
+                    static_cast<u8>((highlightColor1.g - highlightColor2.g) * progress + highlightColor2.g),
+                    static_cast<u8>((highlightColor1.b - highlightColor2.b) * progress + highlightColor2.b),
+                    0xF
+                };
+                s32 x = 0, y = 0;
 
-				if (this->m_highlightShaking) {
-					auto t = (std::chrono::system_clock::now() - this->m_highlightShakingStartTime);
-					if (t >= 100ms)
-						this->m_highlightShaking = false;
-					else {
-						s32 amplitude = std::rand() % 5 + 5;
+                if (this->m_highlightShaking) {
+                    auto t = (std::chrono::system_clock::now() - this->m_highlightShakingStartTime);
+                    if (t >= 100ms)
+                        this->m_highlightShaking = false;
+                    else {
+                        s32 amplitude = std::rand() % 5 + 5;
 
-						switch (this->m_highlightShakingDirection) {
-							case FocusDirection::Up:
-								y -= shakeAnimation(t, amplitude);
-								break;
-							case FocusDirection::Down:
-								y += shakeAnimation(t, amplitude);
-								break;
-							case FocusDirection::Left:
-								x -= shakeAnimation(t, amplitude);
-								break;
-							case FocusDirection::Right:
-								x += shakeAnimation(t, amplitude);
-								break;
-							default:
-								break;
-						}
+                        switch (this->m_highlightShakingDirection) {
+                            case FocusDirection::Up:
+                                y -= shakeAnimation(t, amplitude);
+                                break;
+                            case FocusDirection::Down:
+                                y += shakeAnimation(t, amplitude);
+                                break;
+                            case FocusDirection::Left:
+                                x -= shakeAnimation(t, amplitude);
+                                break;
+                            case FocusDirection::Right:
+                                x += shakeAnimation(t, amplitude);
+                                break;
+                            default:
+                                break;
+                        }
 
-						x = std::clamp(x, -amplitude, amplitude);
-						y = std::clamp(y, -amplitude, amplitude);
-					}
-				}
+                        x = std::clamp(x, -amplitude, amplitude);
+                        y = std::clamp(y, -amplitude, amplitude);
+                    }
+                }
 
 				renderer->drawRect(this->m_x, this->m_y, this->m_width, this->m_height, a(0xF000));
 
@@ -1265,6 +1364,13 @@ namespace tsl {
 		 */
 		class OverlayFrame : public Element {
 		public:
+            std::string defaultTextColorStr = parseValueFromIniSection("/config/ultrahand/theme.ini", "theme", "text_color");
+            tsl::gfx::Color defaultTextColor = tsl::gfx::RGB888(defaultTextColorStr);
+            std::string clockColorStr = parseValueFromIniSection("/config/ultrahand/theme.ini", "theme", "clock_color");
+            tsl::gfx::Color clockColor = tsl::gfx::RGB888(clockColorStr);
+            std::string batteryColorStr = parseValueFromIniSection("/config/ultrahand/theme.ini", "theme", "battery_color");
+            tsl::gfx::Color batteryColor = tsl::gfx::RGB888(batteryColorStr);
+            
 			/**
 			 * @brief Constructor
 			 * 
@@ -1280,11 +1386,11 @@ namespace tsl {
 			virtual void draw(gfx::Renderer *renderer) override {
 				renderer->fillScreen(a({ 0x0, 0x0, 0x0, alphabackground }));
 
-				renderer->drawString(this->m_title.c_str(), false, 20, 50, 30, a(0xFFFF));
-				renderer->drawString(this->m_subtitle.c_str(), false, 20, 70, 15, a(0xFFFF));
+				renderer->drawString(this->m_title.c_str(), false, 20, 50, 30, a(defaultTextColor));
+				renderer->drawString(this->m_subtitle.c_str(), false, 20, 70, 15, a(defaultTextColor));
 
-				if (FullMode == true) renderer->drawRect(15, 720 - 73, tsl::cfg::FramebufferWidth - 30, 1, a(0xFFFF));
-				if (TeslaFPS == 60) renderer->drawString("\uE0E1  Back     \uE0E0  OK", false, 30, 693, 23, a(0xFFFF));
+				if (FullMode == true) renderer->drawRect(15, 720 - 73, tsl::cfg::FramebufferWidth - 30, 1, a(defaultTextColor));
+				if (TeslaFPS == 60) renderer->drawString("\uE0E1  Back     \uE0E0  OK", false, 30, 693, 23, a(defaultTextColor));
 
 				if (this->m_contentElement != nullptr)
 					this->m_contentElement->frame(renderer);
@@ -1294,7 +1400,7 @@ namespace tsl {
 				this->setBoundaries(parentX, parentY, parentWidth, parentHeight);
 
 				if (this->m_contentElement != nullptr) {
-					this->m_contentElement->setBoundaries(parentX + 35, parentY + 175, parentWidth - 85, parentHeight - 90 - 100);
+                    this->m_contentElement->setBoundaries(parentX + 35, parentY + 140, parentWidth - 85, parentHeight - 73 - 105); // CUSTOM MODIFICATION
 					this->m_contentElement->invalidate();
 				}
 			}
@@ -1359,6 +1465,9 @@ namespace tsl {
 		 */
 		class ListItem : public Element {
 		public:
+            std::string defaultTextColorStr = parseValueFromIniSection("/config/ultrahand/theme.ini", "theme", "text_color");
+            tsl::gfx::Color defaultTextColor = tsl::gfx::RGB888(defaultTextColorStr);
+            
 			/**
 			 * @brief Constructor
 			 * 
@@ -1373,10 +1482,10 @@ namespace tsl {
 					this->m_valueWidth = width;
 				}
 
-				renderer->drawRect(this->getX(), this->getY(), this->getWidth(), 1, a({ 0x5, 0x5, 0x5, 0xF }));
-				renderer->drawRect(this->getX(), this->getY() + this->getHeight(), this->getWidth(), 1, a({ 0x5, 0x5, 0x5, 0xF }));
+				renderer->drawRect(this->getX(), this->getY(), this->getWidth(), 1, a({ 0x4, 0x4, 0x4, 0xF  }));
+				renderer->drawRect(this->getX(), this->getY() + this->getHeight(), this->getWidth(), 1, a({ 0x0, 0x0, 0x0, 0xD }));
 
-				renderer->drawString(this->m_text.c_str(), false, this->getX() + 20, this->getY() + 45, 23, a({ 0xF, 0xF, 0xF, 0xF }));
+				renderer->drawString(this->m_text.c_str(), false, this->getX() + 20, this->getY() + 45, 23, a(defaultTextColor));
 
 				renderer->drawString(this->m_value.c_str(), false, this->getX() + this->getWidth() - this->m_valueWidth - 20, this->getY() + 45, 20, this->m_faint ? a({ 0x6, 0x6, 0x6, 0xF }) : a({ 0x5, 0xC, 0xA, 0xF }));
 			}
@@ -1493,6 +1602,7 @@ namespace tsl {
 		};
 
 
+
 		/**
 		 * @brief A List containing list items
 		 * 
@@ -1504,7 +1614,7 @@ namespace tsl {
 			 * 
 			 * @param entriesShown Amount of items displayed in the list at once before scrolling starts
 			 */
-			List(u16 entriesShown = 5) : Element(), m_entriesShown(entriesShown) {}
+			List(u16 entriesShown = 6) : Element(), m_entriesShown(entriesShown) {}
 			virtual ~List() {
 				for (auto& item : this->m_items)
 					delete item.element;
@@ -2310,10 +2420,9 @@ namespace tsl {
 		Overlay::get()->goBack();
 	}
 
-	static void setNextOverlay(std::string ovlPath, std::string origArgs) {
+	static void setNextOverlay(std::string ovlPath, std::string args) {
 
-		std::string args = std::filesystem::path(ovlPath).filename();
-		args += " " + origArgs + " --skipCombo";
+		args += " --skipCombo";
 
 		envSetNextLoad(ovlPath.c_str(), args.c_str());
 	}
@@ -2442,6 +2551,8 @@ namespace tsl::cfg {
 
 }
 
+extern "C" void __libnx_init_time(void);
+
 extern "C" {
 
 	u32 __nx_applet_type = AppletType_None;
@@ -2465,12 +2576,16 @@ extern "C" {
 			ASSERT_FATAL(pmdmntInitialize());   // PID querying
 			ASSERT_FATAL(hidsysInitialize());   // Focus control
 			ASSERT_FATAL(setsysInitialize());   // Settings querying
+            ASSERT_FATAL(timeInitialize()); // CUSTOM MODIFICATION
+            __libnx_init_time();            // CUSTOM MODIFICATION
+            timeExit(); // CUSTOM MODIFICATION
 		});
 		Service *plSrv = plGetServiceSession();
 		Service plClone;
 		ASSERT_FATAL(serviceClone(plSrv, &plClone));
 		serviceClose(plSrv);
 		*plSrv = plClone;
+        
 	}
 
 	/**
