@@ -370,50 +370,6 @@ namespace tsl {
 			inline Color(u16 raw): rgba(raw) {}
 			inline Color(u8 r, u8 g, u8 b, u8 a): r(r), g(g), b(b), a(a) {}
 		};
-        Color GradientColor(float temperature) {
-            // Ensure temperature is within the range [0, 100]
-            temperature = std::max(0.0f, std::min(100.0f, temperature)); // Celsius
-
-            // this is where colors are at their full
-            float blueStart = 35.0f;
-            float greenStart = 45.0f;
-            float yellowStart = 55.0f;
-            float redStart = 65.0f;
-
-            // Initialize RGB values
-            uint8_t r, g, b, a = 0xFF;
-
-            if (temperature < blueStart) { // rgb 7, 7, 15 at blueStart
-                r = 7;
-                g = 7;
-                b = 15;
-            } else if (temperature >= blueStart && temperature < greenStart) {
-                // Smooth color blending from (7 7 15) to (0 15 0)
-                float t = (temperature - blueStart) / (greenStart - blueStart);
-                r = static_cast<uint8_t>(7 - 7 * t);
-                g = static_cast<uint8_t>(7 + 8 * t);
-                b = static_cast<uint8_t>(15 - 15 * t);
-            } else if (temperature >= greenStart && temperature < yellowStart) {
-                // Smooth color blending from (0 15 0) to (15 15 0)
-                float t = (temperature - greenStart) / (yellowStart - greenStart);
-                r = static_cast<uint8_t>(15 * t);
-                g = static_cast<uint8_t>(15);
-                b = static_cast<uint8_t>(0);
-            } else if (temperature >= yellowStart && temperature < redStart) {
-                // Smooth color blending from (15 15 0) to (15 0 0)
-                float t = (temperature - yellowStart) / (redStart - yellowStart);
-                r = static_cast<uint8_t>(15);
-                g = static_cast<uint8_t>(15 - 15 * t);
-                b = static_cast<uint8_t>(0);
-            } else {
-                // Full red
-                r = 15;
-                g = 0;
-                b = 0;
-            }
-
-            return Color(r, g, b, a);
-        }
 
         Color RGB888(std::string hexColor, std::string defaultHexColor = "#FFFFFF") {
             // Remove the '#' character if it's present
@@ -2576,9 +2532,6 @@ extern "C" {
 			ASSERT_FATAL(pmdmntInitialize());   // PID querying
 			ASSERT_FATAL(hidsysInitialize());   // Focus control
 			ASSERT_FATAL(setsysInitialize());   // Settings querying
-            ASSERT_FATAL(timeInitialize()); // CUSTOM MODIFICATION
-            __libnx_init_time();            // CUSTOM MODIFICATION
-            timeExit(); // CUSTOM MODIFICATION
 		});
 		Service *plSrv = plGetServiceSession();
 		Service plClone;
