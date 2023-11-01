@@ -63,7 +63,7 @@ static std::vector<std::string> split(const std::string& str, char delim = ' ') 
  * @param str The INI-formatted string to parse.
  * @return A map representing the parsed INI data.
  */
-static std::map<std::string, std::map<std::string, std::string>> parseIni(const std::string &str) {
+[[maybe_unused]] static std::map<std::string, std::map<std::string, std::string>> parseIni(const std::string &str) {
     std::map<std::string, std::map<std::string, std::string>> iniData;
 
     auto lines = split(str, '\n');
