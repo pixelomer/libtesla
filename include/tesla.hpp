@@ -2244,8 +2244,13 @@ namespace tsl {
 			hlp::ini::IniData parsedConfig = hlp::ini::parseIni(configFileData);
 
 			launchCombo = 0x00;
-			for (std::string key : hlp::split(parsedConfig["tesla"]["key_combo"], '+'))
+			size_t max_combo = 4;
+			for (std::string key : hlp::split(parsedConfig["tesla"]["key_combo"], '+')) {
 				launchCombo |= hlp::stringToKeyCode(key);
+				if (!--max_combo){
+					return;
+				}
+			}
 		}
 
 		/**
