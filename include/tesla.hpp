@@ -687,6 +687,17 @@ namespace tsl {
 				std::fill_n(static_cast<Color*>(this->getCurrentFramebuffer()), this->getFramebufferSize() / sizeof(Color), color);
 			}
 
+			inline void setLayerPos(u32 x, u32 y) {
+				if (x > cfg::ScreenWidth || y > cfg::ScreenHeight) {
+					return;
+				}
+				setLayerPosImpl(x, y);
+			}
+
+			static Renderer& getRenderer() {
+				return get();
+			}
+
 			/**
 			 * @brief Clears the layer (With transparency)
 			 * 
@@ -1028,6 +1039,12 @@ namespace tsl {
 
 				std::free(glyphBmp);
 
+			}
+
+			inline void setLayerPosImpl(u32 x, u32 y) {
+				cfg::LayerPosX = x;
+				cfg::LayerPosY = y;
+				ASSERT_FATAL(viSetLayerPosition(&this->m_layer, cfg::LayerPosX, cfg::LayerPosY));
 			}
 		};
 
