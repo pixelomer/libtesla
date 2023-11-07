@@ -687,8 +687,19 @@ namespace tsl {
 				std::fill_n(static_cast<Color*>(this->getCurrentFramebuffer()), this->getFramebufferSize() / sizeof(Color), color);
 			}
 
+			/**
+			 * @brief Clears the layer (With transparency)
+			 * 
+			 */
+			inline void clearScreen() {
+				this->fillScreen({ 0x00, 0x00, 0x00, 0x00 });
+			}
+
 			inline void setLayerPos(u32 x, u32 y) {
-				if (x > cfg::ScreenWidth || y > cfg::ScreenHeight) {
+				float ratio = 1.5;
+				u32 maxX = cfg::ScreenWidth - (int)(ratio * cfg::FramebufferWidth);
+				u32 maxY = cfg::ScreenHeight - (int)(ratio * cfg::FramebufferHeight);
+				if (x > maxX || y > maxY) {
 					return;
 				}
 				setLayerPosImpl(x, y);
@@ -696,14 +707,6 @@ namespace tsl {
 
 			static Renderer& getRenderer() {
 				return get();
-			}
-
-			/**
-			 * @brief Clears the layer (With transparency)
-			 * 
-			 */
-			inline void clearScreen() {
-				this->fillScreen({ 0x00, 0x00, 0x00, 0x00 });
 			}
 
 			/**
