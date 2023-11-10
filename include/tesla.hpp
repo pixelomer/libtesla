@@ -111,6 +111,7 @@ bool FullMode = true;
 PadState pad;
 uint16_t framebufferWidth = 448;
 uint16_t framebufferHeight = 720;
+bool deactivateOriginalFooter = false;
 
 using namespace std::literals::chrono_literals;
 
@@ -393,6 +394,7 @@ namespace tsl {
             }
             return RGB888(defaultHexColor);
         }
+
 		/**
 		 * @brief Manages the Tesla layer and draws raw data to the screen
 		 */
@@ -1366,7 +1368,7 @@ namespace tsl {
 				renderer->drawString(this->m_subtitle.c_str(), false, 20, 70, 15, a(defaultTextColor));
 
 				if (FullMode == true) renderer->drawRect(15, 720 - 73, tsl::cfg::FramebufferWidth - 30, 1, a(defaultTextColor));
-				if (TeslaFPS == 60) renderer->drawString("\uE0E1  Back     \uE0E0  OK", false, 30, 693, 23, a(defaultTextColor));
+				if (!deactivateOriginalFooter) renderer->drawString("\uE0E1  Back     \uE0E0  OK", false, 30, 693, 23, a(defaultTextColor));
 
 				if (this->m_contentElement != nullptr)
 					this->m_contentElement->frame(renderer);
