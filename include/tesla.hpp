@@ -364,7 +364,7 @@ namespace tsl {
 			union {
 				struct {
 					u16 r: 4, g: 4, b: 4, a: 4;
-				} PACKED;
+				} NX_PACKED;
 				u16 rgba;
 			};
 
