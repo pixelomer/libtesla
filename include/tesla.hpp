@@ -49,6 +49,13 @@
 float M_PI = 3.14159265358979323846;
 
 #include <switch.h>
+#include <cstdlib>
+
+extern "C" {
+	void __assert_func(const char *_file, int _line, const char *_func, const char *_expr ) {
+		abort();
+	}
+}
 
 #include <stdlib.h>
 #include <strings.h>
