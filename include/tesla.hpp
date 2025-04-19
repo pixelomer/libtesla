@@ -118,6 +118,7 @@ bool FullMode = true;
 PadState pad;
 uint16_t framebufferWidth = 448;
 uint16_t framebufferHeight = 720;
+float layerScale = 1.0;
 bool deactivateOriginalFooter = false;
 
 using namespace std::literals::chrono_literals;
@@ -130,9 +131,10 @@ namespace tsl {
 
 		constexpr u32 ScreenWidth = 1920;       ///< Width of the Screen
 		constexpr u32 ScreenHeight = 1080;      ///< Height of the Screen
-		constexpr u32 LayerMaxWidth = 1280;
-		constexpr u32 LayerMaxHeight = 720;
+		constexpr u32 LayerMaxWidth = 1280;     ///< Max width for LayerScale 1.0
+		constexpr u32 LayerMaxHeight = 720;     ///< Max height for LayerScale 1.0
 
+		extern float LayerScale;
 		extern u16 LayerWidth;                  ///< Width of the Tesla layer
 		extern u16 LayerHeight;                 ///< Height of the Tesla layer
 		extern u16 LayerPosX;                   ///< X position of the Tesla layer
@@ -923,8 +925,9 @@ namespace tsl {
 				cfg::LayerPosY = 0;
 				cfg::FramebufferWidth = framebufferWidth;
 				cfg::FramebufferHeight = framebufferHeight;
-				cfg::LayerWidth  = cfg::ScreenWidth * (float(cfg::FramebufferWidth) / float(cfg::LayerMaxWidth));
-				cfg::LayerHeight = cfg::ScreenHeight * (float(cfg::FramebufferHeight) / float(cfg::LayerMaxHeight));
+				cfg::LayerScale = layerScale;
+				cfg::LayerWidth  = cfg::ScreenWidth * (cfg::LayerScale * float(cfg::FramebufferWidth) / float(cfg::LayerMaxWidth));
+				cfg::LayerHeight = cfg::ScreenHeight * (cfg::LayerScale * float(cfg::FramebufferHeight) / float(cfg::LayerMaxHeight));
 
 				if (this->m_initialized)
 					return;
