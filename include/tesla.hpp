@@ -2539,6 +2539,7 @@ namespace tsl::cfg {
 	u16 LayerHeight = 0;
 	u16 LayerPosX   = 0;
 	u16 LayerPosY   = 0;
+	float LayerScale = 0;
 	u16 FramebufferWidth  = 0;
 	u16 FramebufferHeight = 0;
 
